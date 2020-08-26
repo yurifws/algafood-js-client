@@ -43,6 +43,20 @@ function consultar() {
     });
   }
 
+  function consultarUm() {
+      var idFormaPagamento = $("#id-forma-pagamento").val() 
+    $.ajax({
+        url: "http://localhost:8080/formas-pagamento/" + idFormaPagamento,
+        type: "get",
+   
+        success: function(response){
+            var reponseArray = []
+            reponseArray.push(response)
+            preencherTabela(reponseArray);
+        }
+    });
+  }
+
   function cadastrar(){
       var formaPagamentoJson = JSON.stringify({
         "descricao":  $("#campo-descricao").val() 
@@ -93,10 +107,12 @@ function consultar() {
   
   function preencherTabela(formasPagamento) {
     $("#tabela tbody tr").remove();
+
+    console.log(formasPagamento);
   
     $.each(formasPagamento, function(i, formaPagamento) {
       var linha = $("<tr>");
-
+      console.log(formaPagamento);
       var linkAcao = $("<a href='#'>")
       .text("Excluir")
       .click(function(event){
@@ -118,5 +134,7 @@ function consultar() {
   $("#botao").click(consultarCozinhas);
   $("#btn-consultar").click(consultar);
   $("#btn-cadastrar").click(cadastrar);
+  $("#btn-buscar").click(consultarUm);
+
   
 
