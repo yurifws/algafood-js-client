@@ -1,140 +1,97 @@
-function consultarRestaurantes(){
- $.ajax({
-     url: "http://localhost:8080/restaurantes",
-     type: "get",
 
-     success: function(response){
-        $("#conteudo").text(JSON.stringify(response));
-     }
- });
-}
-
-function fecharRestaurantes(){
+ const config = {
+    clientId: "foodanalytics",
+    clientSecret: "food123",
+    authorizeUrl: "http://localhost:8081/oauth/authorize",
+    tokenUrl: "http://localhost:8081/oauth/token",
+    callbackUrl: "http://127.0.0.1:5500/algafood-js/",
+    cozinhasUrl: "http://localhost:8080/v1/cozinhas"
+  };
+  
+  let accessToken = "";
+  
+  function consultar() {
+    alert("Consultando recurso com access token " + accessToken);
+  
     $.ajax({
-        url: "http://localhost:8080/restaurantes/1/fechamento",
-        type: "put",
-   
-        success: function(response){
-           alert("Restaurante foi fechado!");
-        }
-    });
-}
-
-function consultarCozinhas(){
-    $.ajax({
-        url: "http://localhost:8080/cozinhas",
-        type: "get",
-   
-        success: function(response){
-           $("#conteudo").text(JSON.stringify(response));
-        }
-    });
-   }
-
-
-function consultar() {
-    $.ajax({
-        url: "http://localhost:8080/formas-pagamento",
-        type: "get",
-   
-        success: function(response){
-            preencherTabela(response);
-        }
-    });
-  }
-
-  function consultarUm() {
-      var idFormaPagamento = $("#id-forma-pagamento").val() 
-    $.ajax({
-        url: "http://localhost:8080/formas-pagamento/" + idFormaPagamento,
-        type: "get",
-   
-        success: function(response){
-            var reponseArray = []
-            reponseArray.push(response)
-            preencherTabela(reponseArray);
-        }
-    });
-  }
-
-  function cadastrar(){
-      var formaPagamentoJson = JSON.stringify({
-        "descricao":  $("#campo-descricao").val() 
-      });
-
-      console.log(formaPagamentoJson);
-      $.ajax({
-        url: "http://localhost:8080/formas-pagamento",
-        type: "post",
-        data: formaPagamentoJson,
-        contentType: "application/json",
-
-        success: function(response){
-            alert("Forma de pagamento cadastrada!");
-            consultar();
-        },
-        error: function(error){
-            if(error.status == 400)  {
-                var problem = JSON.parse(error.responseText);
-                alert(problem.userMessage);
-            }else{
-                alert("Erro ao cadastrar forma de pagamento!");
-            }
-        }
-    });
-  }
-
-  function excluir(formaPagamento){
-    var url = "http://localhost:8080/formas-pagamento/" + formaPagamento.id;
-    $.ajax({
-        url: url,
-        type: "delete",
-        success: function(response){
-            alert("Forma de pagamento deletada!");
-            consultar();
-        },
-        error: function(error){
-            if(error.status >= 400 && error.status <= 499)  {
-                var problem = JSON.parse(error.responseText);
-                alert(problem.userMessage);
-            }else{
-                alert("Erro ao deletar forma de pagamento!");
-            }
-        }
+      url: config.cozinhasUrl,
+      type: "get",
+  
+      beforeSend: function(request) {
+        request.setRequestHeader("Authorization", "Bearer " + accessToken);
+      },
+  
+      success: function(response) {
+        var json = JSON.stringify(response);
+        $("#resultado").text(json);
+      },
+  
+      error: function(error) {
+        alert("Erro ao consultar recurso");
+      }
     });
   }
   
+  function gerarAccessToken(code) {
+    alert("Gerando access token com code " + code);
   
-  function preencherTabela(formasPagamento) {
-    $("#tabela tbody tr").remove();
-
-    console.log(formasPagamento);
+    let clientAuth = btoa(config.clientId + ":" + config.clientSecret);
+    
+    let params = new URLSearchParams();
+    params.append("grant_type", "authorization_code");
+    params.append("code", code);
+    params.append("redirect_uri", config.callbackUrl);
   
-    $.each(formasPagamento, function(i, formaPagamento) {
-      var linha = $("<tr>");
-      console.log(formaPagamento);
-      var linkAcao = $("<a href='#'>")
-      .text("Excluir")
-      .click(function(event){
-          event.preventDefault();
-          excluir(formaPagamento)
-      })
+    $.ajax({
+      url: config.tokenUrl,
+      type: "post",
+      data: params.toString(),
+      contentType: "application/x-www-form-urlencoded",
   
-      linha.append(
-        $("<td>").text(formaPagamento.id),
-        $("<td>").text(formaPagamento.descricao),
-        $("<td>").append(linkAcao)
-      );
+      beforeSend: function(request) {
+        request.setRequestHeader("Authorization", "Basic " + clientAuth);
+      },
   
-      linha.appendTo("#tabela");
+      success: function(response) {
+        accessToken = response.access_token;
+  
+        alert("Access token gerado: " + accessToken);
+      },
+  
+      error: function(error) {
+        alert("Erro ao gerar access key");
+      }
     });
   }
   
-
-  $("#botao").click(consultarCozinhas);
+  function login() {
+    // https://auth0.com/docs/protocols/oauth2/oauth-state
+    let state = btoa(Math.random());
+    localStorage.setItem("clientState", state);
+  
+    window.location.href = `${config.authorizeUrl}?response_type=code&client_id=${config.clientId}&state=${state}&redirect_uri=${config.callbackUrl}`;
+  }
+  
+  $(document).ready(function() {
+    let params = new URLSearchParams(window.location.search);
+  
+    let code = params.get("code");
+    let state = params.get("state");
+    let currentState = localStorage.getItem("clientState");
+  
+    if (code) {
+      // window.history.replaceState(null, null, "/");
+  
+      if (currentState == state) {
+        gerarAccessToken(code);
+      } else {
+        alert("State inválido");
+      }
+    }
+  });
+  
   $("#btn-consultar").click(consultar);
-  $("#btn-cadastrar").click(cadastrar);
-  $("#btn-buscar").click(consultarUm);
+  $("#btn-login").click(login);
 
-  
+
 
